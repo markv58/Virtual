@@ -4,7 +4,7 @@
 """
 This is a NodeServer created for Polyglot v2 from a template by Einstein.42 (James Miline)
 This NodeServer was created by markv58 (Mark Vittes) markv58git@gmail.com
-v1.0.12
+v1.0.16
 """
 
 import polyinterface
@@ -41,6 +41,7 @@ class Controller(polyinterface.Controller):
         self.user = 'none'
         self.password = 'none'
         self.isy = 'none'
+        self.parseDelay = 0.0
 
     def start(self):
         LOGGER.info('Started Virtual Device NodeServer')
@@ -87,6 +88,8 @@ class Controller(polyinterface.Controller):
             elif a == "password":
                 #LOGGER.debug('ISY password is %s', val)
                 self.password = str(val)
+            elif a == "parseDelay":
+                self.parseDelay = int(val)
             elif a.isdigit(): 
                 if val == 'switch':
                     _name = str(val) + ' ' + str(key)
@@ -247,8 +250,8 @@ class VirtualTemp(polyinterface.Node):
         _name = str(self.name)
         _name = _name.replace(" ","_")
         _key = 'key' + str(self.address)
-        LOGGER.debug(_name)
-        LOGGER.debug(_key)
+        #LOGGER.debug(_name)
+        #LOGGER.debug(_key)
         s = shelve.open(_name, writeback=True)
         try:
             s[_key] = { 'action1': self.action1, 'action1type': self.action1type, 'action1id': self.action1id,
@@ -276,8 +279,8 @@ class VirtualTemp(polyinterface.Node):
         _name = str(self.name)
         _name = _name.replace(" ","_")
         _key = 'key' + str(self.address)
-        LOGGER.debug(_name)
-        LOGGER.debug(_key)
+        #LOGGER.debug(_name)
+        #LOGGER.debug(_key)
         s = shelve.open(_name, writeback=True)            
         try:
             existing = s[_key]
@@ -349,12 +352,12 @@ class VirtualTemp(polyinterface.Node):
         if self.action1 == 1:
             _type = TYPELIST[(self.action1type - 1)]
             self.pushTheValue(_type, self.action1id)
-            LOGGER.debug('Action 1 Pushing')
+        #    LOGGER.debug('Action 1 Pushing')
         
         if self.action2 == 1:
             _type = TYPELIST[(self.action2type - 1)]
             self.pushTheValue(_type, self.action2id)
-            LOGGER.debug('Action 2 Pushing')
+        #    LOGGER.debug('Action 2 Pushing')
             
     def setAction1(self, command):
         self.action1 = int(command.get('value'))
@@ -416,18 +419,24 @@ class VirtualTemp(polyinterface.Node):
         else:
             _type = str(command1)
             _id = str(command2)
-            LOGGER.debug('Pulling from http://%s/rest/vars/get%s%s/', self.parent.isy, _type, _id)
-            r = requests.get('http://' + self.parent.isy + '/rest/vars/get' + _type + _id, auth=(self.parent.user, self.parent.password))
-            _content = str(r.content)
-            LOGGER.debug(_content)
-            _value =  re.split('.*<init>(\d+).*<prec>(\d).*<val>(\d+)',_content)
-            LOGGER.info(_value)
-            LOGGER.info('Init = %s Prec = %s Value = %s',_value[1], _value[2], _value[3])
-            LOGGER.debug(_type)
-            _newTemp = 0    
-            if command1 == '/2/' : _newTemp = int(_value[3])
-            if command1 == '/1/' : _newTemp = int(_value[1])
-            #if _value[2] == '1': _newTemp = (_newTemp / 10)
+            try:
+                #LOGGER.debug('Pulling from http://%s/rest/vars/get%s%s/', self.parent.isy, _type, _id)
+                r = requests.get('http://' + self.parent.isy + '/rest/vars/get' + _type + _id, auth=(self.parent.user, self.parent.password))
+                _content = str(r.content)
+                #LOGGER.debug(_content)
+                _value =  re.split('.*<init>(\d+).*<prec>(\d).*<val>(\d+)',_content)
+                LOGGER.info(_value)
+                #LOGGER.debug(_type)
+                _newTemp = 0
+                time.sleep(int(self.parent.parseDelay))
+                LOGGER.debug('Parse delay: %s', self.parent.parseDelay)
+            except Exception as e:
+                LOGGER.error('There was an error with the value pull: ' + str(e))
+            try:                 
+                if command1 == '/2/' : _newTemp = int(_value[3])
+                if command1 == '/1/' : _newTemp = int(_value[1])
+            except Exception as e:
+                LOGGER.error('An error occured during the content parse: ' + str(e))             
             self.setTempFromData(_newTemp)         
             
     def setTempFromData(self, command):
@@ -503,18 +512,18 @@ class VirtualTemp(polyinterface.Node):
             self.previousHigh = self.highTemp
             self.previousLow = self.lowTemp
             if command > self.highTemp:
-                LOGGER.debug('check high')
+            #    LOGGER.debug('check high')
                 self.setDriver('GV3', command)
                 self.highTemp = command            
             if command < self.lowTemp:
-                LOGGER.debug('check low')
+            #    LOGGER.debug('check low')
                 self.setDriver('GV4', command)
                 self.lowTemp = command
             self.avgHighLow()
             
     def avgHighLow(self):
         if self.highTemp != -60 and self.lowTemp != 129: # make sure values have been set from startup
-            LOGGER.debug('Updating the average temperatue')
+            #LOGGER.debug('Updating the average temperatue')
             self.prevAvgTemp = self.currentAvgTemp
             self.currentAvgTemp = round(((self.highTemp + self.lowTemp) / 2), 1)
             self.setDriver('GV5', self.currentAvgTemp)            
@@ -643,8 +652,8 @@ class VirtualTempC(polyinterface.Node):
         _name = str(self.name)
         _name = _name.replace(" ","_")
         _key = 'key' + str(self.address)
-        LOGGER.debug(_name)
-        LOGGER.debug(_key)
+        #LOGGER.debug(_name)
+        #LOGGER.debug(_key)
         s = shelve.open(_name, writeback=True)
         try:
             s[_key] = { 'action1': self.action1, 'action1type': self.action1type, 'action1id': self.action1id,
@@ -654,7 +663,7 @@ class VirtualTempC(polyinterface.Node):
                         'prevAvgTemp': self.prevAvgTemp, 'currentAvgTemp': self.currentAvgTemp, 'firstPass': self.firstPass }
         finally:
             s.close()
-        LOGGER.info('Storing Values')
+        #LOGGER.info('Storing Values')
         self.listValues()
 
     def listValues(self):
@@ -672,8 +681,8 @@ class VirtualTempC(polyinterface.Node):
         _name = str(self.name)
         _name = _name.replace(" ","_")
         _key = 'key' + str(self.address)
-        LOGGER.debug(_name)
-        LOGGER.debug(_key)
+        #LOGGER.debug(_name)
+        #LOGGER.debug(_key)
         s = shelve.open(_name, writeback=True)            
         try:
             existing = s[_key]
@@ -813,18 +822,24 @@ class VirtualTempC(polyinterface.Node):
         else:
             _type = str(command1)
             _id = str(command2)
-            LOGGER.debug('Pulling from http://%s/rest/vars/get%s%s/', self.parent.isy, _type, _id)
-            r = requests.get('http://' + self.parent.isy + '/rest/vars/get' + _type + _id, auth=(self.parent.user, self.parent.password))
-            _content = str(r.content)
-            LOGGER.debug(_content)
-            _value =  re.split('.*<init>(\d+).*<prec>(\d).*<val>(\d+)',_content)
-            LOGGER.info(_value)
-            LOGGER.info('Init = %s Prec = %s Value = %s',_value[1], _value[2], _value[3])
-            LOGGER.debug(_type)
-            _newTemp = 0    
-            if command1 == '/2/' : _newTemp = int(_value[3])
-            if command1 == '/1/' : _newTemp = int(_value[1])
-            #if _value[2] == '1': _newTemp = (_newTemp / 10)
+            try:
+                #LOGGER.debug('Pulling from http://%s/rest/vars/get%s%s/', self.parent.isy, _type, _id)
+                r = requests.get('http://' + self.parent.isy + '/rest/vars/get' + _type + _id, auth=(self.parent.user, self.parent.password))
+                _content = str(r.content)
+                #LOGGER.debug(_content)
+                _value =  re.split('.*<init>(\d+).*<prec>(\d).*<val>(\d+)',_content)
+                LOGGER.info(_value)
+                #LOGGER.debug(_type)
+                _newTemp = 0
+                time.sleep(int(self.parent.parseDelay))
+                LOGGER.debug('Parse delay: %s', self.parent.parseDelay)
+            except Exception as e:
+                LOGGER.error('There was an error with the value pull: ' + str(e))
+            try:                 
+                if command1 == '/2/' : _newTemp = int(_value[3])
+                if command1 == '/1/' : _newTemp = int(_value[1])
+            except Exception as e:
+                LOGGER.error('An error occured during the content parse: ' + str(e))             
             self.setTempFromData(_newTemp)
 
     def setTempFromData(self, command):
