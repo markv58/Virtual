@@ -86,6 +86,7 @@ class Controller(polyinterface.Controller):
 
     def check_params(self):
         for key,val in self.polyConfig['customParams'].items():
+            time.sleep(0.1)
             a = key
             if a == "isy":
                 self.isy = str(val)
