@@ -19,6 +19,9 @@ Data can be Pushed to another variable.
 
 ### Updates
 
+1.2.4 Fixed a problem when there are a lot of switches in the configuration. It could cause errors on startup where not all virtual switches
+are loaded.
+
 1.2.3 Bug fix.
 
 1.2.2 Unlinked Switch and Generic/Dimmer from variable, data and parameter storage to .db for retrieval on restart. Hints for Switch, Generic/Dimmer added.
